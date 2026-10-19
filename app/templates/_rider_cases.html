@@ -1,0 +1,24 @@
+{% import '_macros.html' as ui %}
+<p class="sidebar-help">A payment is complete only when the simulator confirms it.</p>
+{% for dispute in disputes | default([]) %}
+  <article class="case-card">
+    <div class="case-card-head">
+      <strong>Case {{ dispute.id }}</strong>
+      {{ ui.status_badge(dispute.status | default('OPEN')) }}
+    </div>
+    <p class="case-title">{{ dispute.category | default('Payout question') | replace('_', ' ') | title }}</p>
+    {% if dispute.trip_id %}<p class="case-detail">Trip {{ dispute.trip_id }}</p>{% endif %}
+    {% if dispute.verified_outstanding is not none %}
+      <div class="case-amount"><span>Verified outstanding</span><strong>{{ ui.money(dispute.verified_outstanding) }}</strong></div>
+    {% endif %}
+    <div class="case-payment"><span>Payment status</span>{{ ui.status_badge(dispute.payment_status | default('NOT_AUTHORIZED')) }}</div>
+    {% if dispute.payment_reference %}<p class="reference">Simulated reference: <code>{{ dispute.payment_reference }}</code></p>{% endif %}
+    {% if dispute.status | default('') | upper in ['PENDING_APPROVAL', 'AWAITING_APPROVAL'] %}<p class="case-note">An operations reviewer will check this case.</p>{% endif %}
+  </article>
+{% else %}
+  <div class="empty-side">
+    <strong>No claims yet</strong>
+    <p>Send a message to start a payout investigation. Your cases will appear here.</p>
+  </div>
+{% endfor %}
+<div class="sidebar-footnote">Need to correct a detail? Send a new message in this conversation. We keep the earlier statement in the record.</div>

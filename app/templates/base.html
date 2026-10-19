@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}QuickDrop{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <link rel="stylesheet" href="/static/quickdrop.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.11/dist/htmx.min.js" integrity="sha384-2OatzQy1H+Zd/IIrjr1TcuDGqLXeHhbooAyJY1KdQMKnr4LZ22k31GBLdYKHmVjg" crossorigin="anonymous"></script>
+  <script defer src="/static/quickdrop.js"></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <div class="container-xl d-flex align-items-center justify-content-between gap-3 py-3">
+      <a class="brand" href="{% block home_url %}/{% endblock %}" aria-label="QuickDrop home">
+        <span class="brand-mark" aria-hidden="true">Q</span>
+        <span>QuickDrop <small>payout support</small></span>
+      </a>
+      <div class="header-actions">
+        <span class="simulation-pill"><span class="simulation-dot"></span> Simulation only</span>
+        {% block header_actions %}{% endblock %}
+      </div>
+    </div>
+  </header>
+  <main id="main-content" class="container-xl page-shell">
+    {% if flash %}<div class="alert alert-info mt-3" role="status">{{ flash }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer container-xl">
+    <span>QuickDrop demo &middot; Synthetic records and simulated payments</span>
+    <span>Payment status reflects MockPaySwift verification.</span>
+  </footer>
+</body>
+</html>

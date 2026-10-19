@@ -1,0 +1,17 @@
+{% macro status_badge(status) -%}
+  {%- set value = (status or 'UNKNOWN') | upper -%}
+  {%- if value in ['CONFIRMED', 'PAID', 'RESOLVED', 'AUTO_RESOLVED', 'APPROVED'] -%}
+    {%- set tone = 'success' -%}
+  {%- elif value in ['FAILED', 'REJECTED', 'REVERSED'] -%}
+    {%- set tone = 'danger' -%}
+  {%- elif value in ['PENDING', 'PROCESSING', 'SUBMITTED', 'AWAITING_APPROVAL', 'PENDING_APPROVAL', 'ESCALATED', 'RECONCILING', 'UNKNOWN', 'OPS_REVIEW'] -%}
+    {%- set tone = 'warning' -%}
+  {%- else -%}
+    {%- set tone = 'neutral' -%}
+  {%- endif -%}
+  <span class="state-badge state-{{ tone }}">{{ value | replace('_', ' ') }}</span>
+{%- endmacro %}
+
+{% macro money(value) -%}
+  ₹{{ value | default('0.00', true) }}
+{%- endmacro %}

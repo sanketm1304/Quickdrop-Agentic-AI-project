@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Operations sign in · QuickDrop{% endblock %}
+{% block body_class %}auth-page ops-auth-page{% endblock %}
+{% block home_url %}/ops/login{% endblock %}
+{% block content %}
+<div class="auth-layout">
+  <section class="auth-intro" aria-labelledby="welcome-title">
+    <span class="eyebrow">Operations workspace</span>
+    <h1 id="welcome-title">Review cases with the evidence in view.</h1>
+    <p>See the verified balance, policy result, payment state, and audit trail before making a decision.</p>
+    <div class="feature-line"><span aria-hidden="true">✓</span> Every decision is revalidated by the server.</div>
+    <div class="feature-line"><span aria-hidden="true">✓</span> Reviewer reasons are kept in the audit record.</div>
+  </section>
+  <section class="auth-card" aria-labelledby="signin-title">
+    <h2 id="signin-title">Employee sign in</h2>
+    <p class="muted mb-4">Use your seeded demo employee credentials.</p>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/ops/login">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+      <div class="mb-3">
+        <label class="form-label" for="employee_id">Employee ID</label>
+        <input class="form-control form-control-lg" id="employee_id" name="employee_id" autocomplete="username" required maxlength="32" value="{{ employee_id | default('') }}">
+      </div>
+      <div class="mb-4">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-control form-control-lg" id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-primary btn-lg w-100" type="submit">Sign in to operations</button>
+    </form>
+    <p class="auth-footnote">Access is limited to authorized employees. All payments are simulated.</p>
+  </section>
+</div>
+{% endblock %}

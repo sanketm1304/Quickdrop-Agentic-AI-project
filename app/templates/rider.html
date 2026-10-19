@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}My payout support · QuickDrop{% endblock %}
+{% block body_class %}rider-page{% endblock %}
+{% block home_url %}/rider{% endblock %}
+{% block header_actions %}
+  <span class="header-identity">{{ rider.display_name | default(rider.rider_id | default('Rider')) }}</span>
+  <form method="post" action="/logout" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Sign out</button>
+  </form>
+{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">Rider support</span>
+    <h1>Your payout conversations</h1>
+    <p>Ask a question, correct a detail, or check the status of a claim.</p>
+  </div>
+  <div class="page-heading-note">Signed in as <strong>{{ rider.rider_id | default('') }}</strong></div>
+</div>
+
+<div class="rider-layout">
+  <section class="chat-panel" aria-labelledby="chat-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="chat-title">Conversation</h2>
+        <p>We use your account records to investigate. Payments shown here are simulated.</p>
+      </div>
+      <span class="online-indicator"><span></span> Support assistant</span>
+    </div>
+    <div class="chat-scroll" id="thread" aria-live="polite" aria-relevant="additions text" hx-get="/rider/thread" hx-trigger="every 5s" hx-swap="innerHTML">
+      {% include '_rider_thread.html' %}
+    </div>
+    <div class="composer">
+      <div id="message-error" class="alert alert-danger d-none" role="alert">We could not send your message. Please try again.</div>
+      <form id="message-form" method="post" action="/rider/messages" hx-post="/rider/messages" hx-target="#thread" hx-swap="innerHTML" hx-indicator="#message-indicator">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+        <label class="form-label" for="message-text">Your message</label>
+        <div class="composer-row">
+          <textarea id="message-text" name="text" class="form-control" rows="2" maxlength="2000" placeholder="Tell us what happened with your payout…" required aria-describedby="composer-help"></textarea>
+          <button class="btn btn-primary" type="submit">Send<span class="visually-hidden"> message</span></button>
+        </div>
+        <div class="composer-help" id="composer-help">
+          <span>English, हिन्दी, and Hinglish are welcome.</span>
+          <span id="message-indicator" class="htmx-indicator" role="status">Sending…</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <aside class="case-sidebar" aria-labelledby="cases-title">
+    <div class="sidebar-top">
+      <div>
+        <span class="eyebrow">At a glance</span>
+        <h2 id="cases-title">Your cases</h2>
+      </div>
+      <a href="/rider" class="btn btn-sm btn-outline-secondary">Refresh status</a>
+    </div>
+    <div id="rider-cases" aria-live="polite" hx-get="/rider/status" hx-trigger="every 10s" hx-swap="innerHTML">
+      {% include '_rider_cases.html' %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

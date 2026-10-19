@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as ui %}
+{% block title %}Operations dashboard · QuickDrop{% endblock %}
+{% block body_class %}ops-page{% endblock %}
+{% block home_url %}/ops{% endblock %}
+{% block header_actions %}
+  <span class="header-identity">{{ employee.display_name | default(employee.employee_id | default('Operations')) }}</span>
+  <form method="post" action="/ops/logout" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Sign out</button>
+  </form>
+{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">Operations workspace</span>
+    <h1>Dispute overview</h1>
+    <p>Review live case records and simulated payout adjustments.</p>
+  </div>
+  <div class="page-heading-note">{{ employee.role | default('Employee') | replace('_', ' ') | title }} access</div>
+</div>
+
+<section class="metrics-grid" aria-label="Case summary">
+  {% set metric_items = [
+    ('Total disputes', metrics.total_disputes | default(0)),
+    ('Open disputes', metrics.open_disputes | default(0)),
+    ('Auto resolved', metrics.auto_resolved | default(0)),
+    ('Pending approvals', metrics.pending_approvals | default(0)),
+    ('Escalated cases', metrics.escalated_cases | default(0)),
+    ('Confirmed adjustments', metrics.confirmed_adjustments | default(0)),
+    ('Failed or uncertain', metrics.failed_or_uncertain | default(0)),
+    ('Avg. resolution', metrics.average_resolution_time | default('—'))
+  ] %}
+  {% for label, value in metric_items %}
+    <div class="metric-card"><span>{{ label }}</span><strong>{{ value }}</strong></div>
+  {% endfor %}
+</section>
+
+<section class="data-panel" aria-labelledby="queue-title">
+  <div class="panel-heading queue-heading">
+    <div><span class="eyebrow">Case queue</span><h2 id="queue-title">Find and review disputes</h2></div>
+    <span class="small text-muted">Amounts are verified by backend policy.</span>
+  </div>
+  <form class="filter-form" method="get" action="/ops">
+    <label class="visually-hidden" for="case-search">Search case, rider, or trip</label>
+    <input class="form-control" id="case-search" type="search" name="q" value="{{ q | default('') }}" placeholder="Search case, rider, or trip">
+    <label class="visually-hidden" for="status-filter">Filter by status</label>
+    <select class="form-select" id="status-filter" name="status">
+      {% for value, label in [('', 'All statuses'), ('PENDING_APPROVAL', 'Pending approval'), ('ESCALATED', 'Escalated'), ('RECONCILING', 'Reconciliation'), ('OPEN', 'Open'), ('RESOLVED', 'Resolved')] %}
+        <option value="{{ value }}" {% if status | default('') == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">Apply</button>
+  </form>
+  <div class="table-responsive">
+    <table class="table case-table">
+      <thead><tr><th scope="col">Case</th><th scope="col">Rider</th><th scope="col">Issue</th><th scope="col">Verified outstanding</th><th scope="col">Status</th><th scope="col">Payment</th><th scope="col">Updated</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+      <tbody>
+        {% for case in cases | default([]) %}
+          <tr>
+            <th scope="row">{{ case.id }}</th>
+            <td>{{ case.rider_id }}</td>
+            <td>{{ case.category | default('Payout question') | replace('_', ' ') | title }}</td>
+            <td class="amount-cell">{{ ui.money(case.verified_outstanding | default(0)) }}</td>
+            <td>{{ ui.status_badge(case.status | default('OPEN')) }}</td>
+            <td>{{ ui.status_badge(case.payment_status | default('NOT_AUTHORIZED')) }}</td>
+            <td class="text-muted">{{ case.updated_at | default('—') }}</td>
+            <td><a class="table-action" href="/ops/cases/{{ case.id }}">Review <span aria-hidden="true">→</span></a></td>
+          </tr>
+        {% else %}
+          <tr><td class="empty-table" colspan="8">No cases match this search.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <nav aria-label="Case pages" class="d-flex justify-content-between align-items-center mt-3">
+    {% if page > 1 %}<a class="btn btn-outline-secondary btn-sm" href="{{ request.url.include_query_params(page=page - 1) }}">Previous page</a>{% else %}<span></span>{% endif %}
+    <span class="small text-muted">Page {{ page }}</span>
+    {% if has_next %}<a class="btn btn-outline-secondary btn-sm" href="{{ request.url.include_query_params(page=page + 1) }}">Next page</a>{% else %}<span></span>{% endif %}
+  </nav>
+</section>
+{% endblock %}

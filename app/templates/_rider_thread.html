@@ -1,0 +1,17 @@
+{% for message in messages | default([]) %}
+  {% set is_rider = (message.sender | default('') | lower) in ['rider', 'user'] %}
+  <article class="chat-row {{ 'chat-row-rider' if is_rider else 'chat-row-assistant' }}">
+    <div class="chat-avatar" aria-hidden="true">{{ 'You' if is_rider else 'QD' }}</div>
+    <div class="chat-bubble">
+      <div class="chat-meta"><strong>{{ 'You' if is_rider else 'QuickDrop support' }}</strong><time>{{ message.created_at | default('') }}</time></div>
+      <p>{{ message.text | default('') }}</p>
+    </div>
+  </article>
+{% else %}
+  <div class="empty-chat">
+    <div class="empty-icon" aria-hidden="true">✦</div>
+    <h2>How can we help with your payout?</h2>
+    <p>Tell us what looks wrong. A trip ID, date, or approximate amount helps us investigate.</p>
+    <p class="text-muted small">For example: “Order T88213 ka surge nahi mila.”</p>
+  </div>
+{% endfor %}

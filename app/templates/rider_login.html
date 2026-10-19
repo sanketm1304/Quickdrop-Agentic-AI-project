@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Rider sign in · QuickDrop{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block home_url %}/login{% endblock %}
+{% block content %}
+<div class="auth-layout">
+  <section class="auth-intro" aria-labelledby="welcome-title">
+    <span class="eyebrow">Rider portal</span>
+    <h1 id="welcome-title">Get a clear answer about your payout.</h1>
+    <p>Ask about a trip, incentive, or payout in English, Hindi, or Hinglish. You can review the case status here whenever you return.</p>
+    <div class="feature-line"><span aria-hidden="true">✓</span> Your trip and payout records stay tied to your account.</div>
+    <div class="feature-line"><span aria-hidden="true">✓</span> Any correction shown here is simulated.</div>
+  </section>
+  <section class="auth-card" aria-labelledby="signin-title">
+    <h2 id="signin-title">Sign in</h2>
+    <p class="muted mb-4">Use your seeded demo rider credentials.</p>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/login">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+      <div class="mb-3">
+        <label class="form-label" for="rider_id">Rider ID</label>
+        <input class="form-control form-control-lg" id="rider_id" name="rider_id" autocomplete="username" required maxlength="32" value="{{ rider_id | default('') }}">
+      </div>
+      <div class="mb-4">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-control form-control-lg" id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-primary btn-lg w-100" type="submit">Sign in to rider portal</button>
+    </form>
+    <p class="auth-footnote">For a local portfolio demonstration only. No real payouts or bank details are used.</p>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as ui %}
+{% block title %}Case {{ case.id }} · QuickDrop operations{% endblock %}
+{% block body_class %}ops-page{% endblock %}
+{% block home_url %}/ops{% endblock %}
+{% block header_actions %}
+  <span class="header-identity">{{ employee.display_name | default(employee.employee_id | default('Operations')) }}</span>
+  <form method="post" action="/ops/logout" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Sign out</button>
+  </form>
+{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb" class="breadcrumb-row"><a href="/ops">← All cases</a><span>/</span><span>Case {{ case.id }}</span></nav>
+<div class="page-heading case-page-heading">
+  <div>
+    <span class="eyebrow">Evidence review</span>
+    <h1>Case {{ case.id }}</h1>
+    <p>Rider {{ case.rider_id }} · {{ case.category | default('Payout question') | replace('_', ' ') | title }}</p>
+  </div>
+  <div class="case-page-state">{{ ui.status_badge(case.status | default('OPEN')) }}</div>
+</div>
+
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+{% if notice %}<div class="alert alert-success" role="status">{{ notice }}</div>{% endif %}
+
+<div class="case-detail-layout">
+  <div class="case-detail-main">
+    <section class="data-panel summary-panel" aria-labelledby="financial-title">
+      <div class="panel-heading"><div><span class="eyebrow">Decision basis</span><h2 id="financial-title">Financial summary</h2></div><span class="policy-tag">Policy {{ case.policy_version | default('QD-2026-01') }}</span></div>
+      <div class="financial-grid">
+        <div><span>Latest claimed</span><strong>{{ ui.money(case.claimed_amount | default(0)) }}</strong></div>
+        <div><span>Verified outstanding</span><strong>{{ ui.money(case.verified_outstanding | default(0)) }}</strong></div>
+        <div><span>Active reservations</span><strong>{{ ui.money(case.reserved_amount | default(0)) }}</strong></div>
+        <div class="financial-highlight"><span>Available to authorize</span><strong>{{ ui.money(case.available_to_authorize | default(0)) }}</strong></div>
+      </div>
+      {% if case.policy_reason %}<p class="decision-note"><strong>Policy decision:</strong> {{ case.policy_reason }}</p>{% endif %}
+      <div class="payment-summary"><span>Provider verification</span>{{ ui.status_badge(case.payment_status | default('NOT_AUTHORIZED')) }}{% if case.payment_reference %}<span class="reference">Simulated reference: <code>{{ case.payment_reference }}</code></span>{% endif %}</div>
+    </section>
+
+    <section class="data-panel" aria-labelledby="evidence-title">
+      <div class="panel-heading"><div><span class="eyebrow">Source records</span><h2 id="evidence-title">Evidence</h2></div></div>
+      <div class="evidence-list">
+        {% for item in case.evidence | default([]) %}
+          <article class="evidence-item">
+            <div class="evidence-item-head"><strong>{{ item.title | default(item.kind | default('Evidence')) }}</strong>{% if item.reference %}<code>{{ item.reference }}</code>{% endif %}</div>
+            <p>{{ item.detail | default(item.description | default('')) }}</p>
+          </article>
+        {% else %}
+          <p class="empty-section">No evidence is recorded for this case yet. Do not approve an unclear balance.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="data-panel" aria-labelledby="conversation-title">
+      <div class="panel-heading"><div><span class="eyebrow">Rider context</span><h2 id="conversation-title">Conversation</h2></div></div>
+      <ol class="event-list conversation-list">
+        {% for message in case.messages | default([]) %}
+          <li><div class="event-meta"><strong>{{ 'Rider' if message.sender | default('') | lower in ['rider', 'user'] else 'QuickDrop support' }}</strong><time>{{ message.created_at | default('') }}</time></div><p>{{ message.text | default('') }}</p></li>
+        {% else %}
+          <li class="empty-section">No conversation messages are linked to this case.</li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section class="data-panel" aria-labelledby="audit-title">
+      <div class="panel-heading"><div><span class="eyebrow">Traceability</span><h2 id="audit-title">Audit timeline</h2></div></div>
+      <ol class="event-list audit-list">
+        {% for event in case.audit_events | default([]) %}
+          <li><div class="event-meta"><strong>{{ event.action | default(event.event_type | default('Event')) | replace('_', ' ') | title }}</strong><time>{{ event.created_at | default('') }}</time></div><p>{{ event.detail | default(event.summary | default('')) }}</p>{% if event.actor %}<span class="event-actor">By {{ event.actor }}</span>{% endif %}</li>
+        {% else %}
+          <li class="empty-section">No audit events are available for this case.</li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+
+  <aside class="case-detail-aside" aria-labelledby="review-title">
+    <div class="review-card">
+      <span class="eyebrow">Human decision</span>
+      <h2 id="review-title">Review this case</h2>
+      <p>A decision is revalidated against current entitlement and provider state when submitted. A reason is required and becomes part of the audit record.</p>
+      {% if can_decide | default(false) %}
+        <form method="post" action="/ops/cases/{{ case.id }}/approve" class="decision-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+          <input type="hidden" name="revision" value="{{ case.revision | default('') }}">
+          <label class="form-label" for="approval-reason">Reason for approval</label>
+          <textarea class="form-control" id="approval-reason" name="reason" rows="3" maxlength="1000" required placeholder="State the evidence and policy reason"></textarea>
+          <button class="btn btn-primary w-100 mt-3" type="submit">Approve verified amount</button>
+        </form>
+        <form method="post" action="/ops/cases/{{ case.id }}/reject" class="decision-form reject-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token | default('') }}">
+          <input type="hidden" name="revision" value="{{ case.revision | default('') }}">
+          <label class="form-label" for="rejection-reason">Reason for rejection</label>
+          <textarea class="form-control" id="rejection-reason" name="reason" rows="3" maxlength="1000" required placeholder="Explain the decision for the case record"></textarea>
+          <button class="btn btn-outline-danger w-100 mt-3" type="submit">Reject case</button>
+        </form>
+      {% else %}
+        <div class="alert alert-secondary mb-0" role="status">No review action is available for this case in its current state.</div>
+      {% endif %}
+    </div>
+    <div class="side-note"><strong>Simulated payments only.</strong> Provider confirmation is the source of settlement truth. An uncertain transfer remains under review.</div>
+  </aside>
+</div>
+{% endblock %}

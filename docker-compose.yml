@@ -1,0 +1,143 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: quickdrop
+      POSTGRES_USER: quickdrop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quickdrop -d quickdrop"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  db_setup:
+    build: .
+    command: ["python", "-m", "scripts.prepare_database"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD in .env}
+      SEED_DATABASE_PASSWORD: ${SEED_DATABASE_PASSWORD:?Set SEED_DATABASE_PASSWORD in .env}
+      QUICKDROP_TEST_MODE: ${QUICKDROP_TEST_MODE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  mockpayswift:
+    build: .
+    command: ["uvicorn", "mockpayswift.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    environment:
+      MOCKPAYSWIFT_DATABASE_PATH: /data/mockpayswift.sqlite3
+      MOCKPAYSWIFT_API_KEY: ${MOCKPAYSWIFT_API_KEY:?Set MOCKPAYSWIFT_API_KEY in .env}
+      MOCKPAYSWIFT_TEST_TOKEN: ${MOCKPAYSWIFT_TEST_TOKEN:-}
+      MOCKPAYSWIFT_TEST_MODE: ${MOCKPAYSWIFT_TEST_MODE:-false}
+    volumes:
+      - providerdata:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  app:
+    build: .
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://quickdrop_app:${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD in .env}@db:5432/quickdrop
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN:?Set WEBHOOK_TOKEN in .env}
+      MOCKPAYSWIFT_API_KEY: ${MOCKPAYSWIFT_API_KEY:?Set MOCKPAYSWIFT_API_KEY in .env}
+      MOCKPAYSWIFT_TEST_TOKEN: ${MOCKPAYSWIFT_TEST_TOKEN:-}
+      MOCKPAYSWIFT_URL: http://mockpayswift:8001
+      QUICKDROP_TEST_MODE: ${QUICKDROP_TEST_MODE:-false}
+      DEMO_RIDER_PASSWORD: ${DEMO_RIDER_PASSWORD:-}
+      DEMO_EMPLOYEE_PASSWORD: ${DEMO_EMPLOYEE_PASSWORD:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      AGENT_MODE: ${AGENT_MODE:-offline}
+      SECURE_COOKIES: ${SECURE_COOKIES:-false}
+    depends_on:
+      db_setup:
+        condition: service_completed_successfully
+      mockpayswift:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.workers.worker"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://quickdrop_app:${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD in .env}@db:5432/quickdrop
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN:?Set WEBHOOK_TOKEN in .env}
+      MOCKPAYSWIFT_API_KEY: ${MOCKPAYSWIFT_API_KEY:?Set MOCKPAYSWIFT_API_KEY in .env}
+      MOCKPAYSWIFT_URL: http://mockpayswift:8001
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      AGENT_MODE: ${AGENT_MODE:-offline}
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from pathlib import Path; import time; p = Path('/tmp/quickdrop-worker-heartbeat'); assert p.exists() and time.time() - p.stat().st_mtime < 180"]
+      interval: 30s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+
+  seed:
+    profiles: ["seed"]
+    build: .
+    command: ["python", "-m", "scripts.seed_database"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://quickdrop_seed:${SEED_DATABASE_PASSWORD:?Set SEED_DATABASE_PASSWORD in .env}@db:5432/quickdrop
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN:?Set WEBHOOK_TOKEN in .env}
+      MOCKPAYSWIFT_API_KEY: ${MOCKPAYSWIFT_API_KEY:?Set MOCKPAYSWIFT_API_KEY in .env}
+      MOCKPAYSWIFT_TEST_TOKEN: ${MOCKPAYSWIFT_TEST_TOKEN:?Set MOCKPAYSWIFT_TEST_TOKEN in .env}
+      MOCKPAYSWIFT_URL: http://mockpayswift:8001
+      DEMO_RIDER_PASSWORD: ${DEMO_RIDER_PASSWORD:?Set DEMO_RIDER_PASSWORD in .env}
+      DEMO_EMPLOYEE_PASSWORD: ${DEMO_EMPLOYEE_PASSWORD:?Set DEMO_EMPLOYEE_PASSWORD in .env}
+    depends_on:
+      db_setup:
+        condition: service_completed_successfully
+      mockpayswift:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  pgdata:
+  providerdata:

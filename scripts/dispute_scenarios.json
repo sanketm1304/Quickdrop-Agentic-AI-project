@@ -1,0 +1,186 @@
+{
+  "schema_version": "dispute-catalog-v1",
+  "generator_seed": 20261018,
+  "source_business_date": "2026-10-17",
+  "note": "All IDs refer to deterministic records from scripts.generate_data. evals.run executes golden cases and individually reset catalog-only HTTP cases; an offline run requires --reset-fixtures for the catalog cases.",
+  "scenarios": [
+    {
+      "requirement": "valid_missing_surge",
+      "source_rider_id": "R0001",
+      "source_trip_ids": ["T0001201"],
+      "source_component_ids": ["C:T0001201:SURGE"],
+      "golden_case": "R0001",
+      "executed_by_eval": true,
+      "ground_truth": {"outstanding": "30.00", "route": "AUTO"}
+    },
+    {
+      "requirement": "valid_missing_incentive",
+      "source_rider_id": "R0002",
+      "source_trip_ids": [],
+      "source_component_ids": ["C:EP:R0002:2026-10-17:INCENTIVE:01"],
+      "golden_case": "R0002",
+      "executed_by_eval": true,
+      "ground_truth": {"outstanding": "50.00", "route": "AUTO"}
+    },
+    {
+      "requirement": "incorrect_total_payout",
+      "source_rider_id": "R0004",
+      "source_trip_ids": ["T0004201", "T0004202", "T0004203"],
+      "golden_case": "R0004",
+      "executed_by_eval": true,
+      "ground_truth": {"outstanding": "334.48", "route": "REVIEW"}
+    },
+    {
+      "requirement": "fully_paid_trip",
+      "source_rider_id": "R0003",
+      "source_trip_ids": ["T0003201"],
+      "golden_case": "R0003",
+      "executed_by_eval": true,
+      "ground_truth": {"outstanding": "0.00", "route": "NO_PAYMENT"}
+    },
+    {
+      "requirement": "partial_payment",
+      "source_rider_id": "R0005",
+      "source_trip_ids": ["T0005201", "T0005202", "T0005203"],
+      "golden_case": "R0005",
+      "executed_by_eval": true,
+      "ground_truth": {"outstanding": "120.00", "route": "AUTO"}
+    },
+    {
+      "requirement": "multiple_disputed_trips",
+      "source_rider_id": "R0004",
+      "source_trip_ids": ["T0004201", "T0004202", "T0004203"],
+      "executed_by_eval": true,
+      "message_sequence": ["Trip T0004201 payout missing, T0004202 payout missing, and T0004203 payout missing."],
+      "ground_truth": {
+        "baseline_amount": "782.20",
+        "baseline_provider_status": "CONFIRMED",
+        "unpaid_by_trip": {"T0004201": "137.00", "T0004202": "97.44", "T0004203": "100.04"},
+        "aggregate_outstanding": "334.48",
+        "invariant": "Allocate each source component at most once; aggregate correction must not exceed 334.48."
+      }
+    },
+    {
+      "requirement": "duplicate_complaints",
+      "source_rider_id": "R0001",
+      "source_trip_ids": ["T0001201"],
+      "source_component_ids": ["C:T0001201:SURGE"],
+      "executed_by_eval": true,
+      "message_sequence": ["T0001201 surge missing", "T0001201 surge missing"],
+      "ground_truth": {"baseline_amount": "951.44", "baseline_provider_status": "CONFIRMED", "outstanding": "30.00", "max_correction_transactions": 1}
+    },
+    {
+      "requirement": "overlapping_claims",
+      "source_rider_id": "R0012",
+      "source_trip_ids": ["T0012201"],
+      "source_component_ids": ["C:T0012201:SURGE"],
+      "golden_case": "R0012",
+      "executed_by_eval": true,
+      "ground_truth": {"outstanding": "30.00", "route": "AUTO_THEN_NO_PAYMENT"}
+    },
+    {
+      "requirement": "changed_claimed_amount",
+      "source_rider_id": "R0005",
+      "source_trip_ids": ["T0005201", "T0005202", "T0005203"],
+      "executed_by_eval": true,
+      "message_sequence": ["My payout for 2026-10-17 is 120 short", "Actually 120 nahi, 150 kam hai"],
+      "ground_truth": {
+        "baseline_amount": "448.44",
+        "baseline_provider_status": "CONFIRMED",
+        "verified_outstanding": "120.00",
+        "final_claimed_amount": "150.00",
+        "max_total_correction": "120.00",
+        "invariant": "A corrected claim cannot increase source entitlement or rewrite a confirmed transfer."
+      }
+    },
+    {
+      "requirement": "changed_trip_identifier",
+      "source_rider_id": "R0001",
+      "source_trip_ids": ["T0001202", "T0001201"],
+      "executed_by_eval": true,
+      "message_sequence": ["Trip T0001202 surge missing", "Sorry, I meant T0001201"],
+      "ground_truth": {
+        "baseline_amount": "951.44",
+        "baseline_provider_status": "CONFIRMED",
+        "first_trip_outstanding": "0.00",
+        "corrected_trip_outstanding": "30.00",
+        "corrected_source_component_id": "C:T0001201:SURGE"
+      }
+    },
+    {
+      "requirement": "repeat_daily_claim",
+      "source_rider_id": "R0004",
+      "source_trip_ids": ["T0004201", "T0004202"],
+      "executed_by_eval": true,
+      "message_sequence": ["Trip T0004201 payout missing", "Trip T0004202 payout missing"],
+      "ground_truth": {
+        "baseline_amount": "782.20",
+        "baseline_provider_status": "CONFIRMED",
+        "first_trip_outstanding": "137.00",
+        "second_trip_outstanding": "97.44",
+        "max_total_correction": "137.00",
+        "first_route": "AUTO",
+        "second_route_on_same_authorization_business_day": "REVIEW"
+      }
+    },
+    {
+      "requirement": "high_value_claim",
+      "source_rider_id": "R0004",
+      "source_trip_ids": ["T0004201", "T0004202", "T0004203"],
+      "golden_case": "R0004",
+      "executed_by_eval": true,
+      "ground_truth": {"outstanding": "334.48", "route": "REVIEW"}
+    },
+    {
+      "requirement": "payment_failure",
+      "source_rider_id": "R0009",
+      "source_trip_ids": [],
+      "source_payout_id": "PAYOUT:R0009:2026-10-17",
+      "golden_case": "R0009",
+      "executed_by_eval": true,
+      "ground_truth": {"baseline_provider_status": "FAILED", "route": "REVIEW"}
+    },
+    {
+      "requirement": "payment_timeout",
+      "source_rider_id": "R0001",
+      "source_trip_ids": ["T0001201"],
+      "source_component_ids": ["C:T0001201:SURGE"],
+      "executed_by_eval": true,
+      "message_sequence": ["T0001201 surge missing"],
+      "test_setup": "After authorization is reserved and before its payment job runs, configure MockPaySwift timeout_after_create for that authorization's idempotency key.",
+      "ground_truth": {
+        "baseline_amount": "951.44",
+        "baseline_provider_status": "CONFIRMED",
+        "outstanding": "30.00",
+        "max_correction_transactions": 1,
+        "eventual_provider_status": "CONFIRMED",
+        "invariant": "Reconcile by stable idempotency key after the lost response."
+      }
+    },
+    {
+      "requirement": "reversed_payment",
+      "source_rider_id": "R0008",
+      "source_trip_ids": [],
+      "source_payout_id": "PAYOUT:R0008:2026-10-17",
+      "golden_case": "R0008",
+      "executed_by_eval": true,
+      "ground_truth": {"baseline_provider_status": "REVERSED", "route": "REVIEW"}
+    },
+    {
+      "requirement": "suspicious_trip_ownership",
+      "source_rider_id": "R0001",
+      "source_trip_ids": ["T0002201"],
+      "actual_trip_owner_id": "R0002",
+      "executed_by_eval": true,
+      "message_sequence": ["My trip T0002201 surge is missing"],
+      "ground_truth": {
+        "baseline_amount": "951.44",
+        "baseline_provider_status": "CONFIRMED",
+        "max_total_correction": "0.00",
+        "route": "INVALID_REFERENCE",
+        "max_correction_transactions": 0,
+        "invariant": "Never reveal R0002's trip or payout details to R0001."
+      }
+    }
+  ]
+}
